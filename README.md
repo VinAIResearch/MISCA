@@ -67,8 +67,11 @@ python main.py --token_level word-level \
             --label_embedding_size 128
 ```
 It is noted that we train the base model without coattention first and initialize MISCA with this base model. To train the base model, simply remove the last 6 lines in the command above. 
+
 To train the model with PLMs, users must replace the token embeddings with the first subword representation from PLMs.
+
 Due to some stochastic factors(e.g., GPU and environment), it maybe need to slightly tune the hyper-parameters using grid search to reproduce the results. The suggested settings are provided in our paper.
+
 If you have any question, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply you soon.
 ### Acknowledgement
 Our code is based on the implementation of the JointIDSF paper from https://github.com/VinAIResearch/JointIDSF
