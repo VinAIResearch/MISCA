@@ -7,7 +7,7 @@
 <img width="600" alt="model" src="model.png">
 </p>
 
-**Please CITE** our paper whenever our dataset or model implementation is used to help produce published results or incorporated into other software.
+**Please CITE** [our paper](https://aclanthology.org/2023.findings-emnlp.841.pdf) whenever our dataset or model implementation is used to help produce published results or incorporated into other software.
 
     @inproceedings{MISCA,
         title     = {{MISCA: A Joint Model for Multiple Intent Detection and Slot Filling with Intent-Slot Co-Attention}},
@@ -33,7 +33,7 @@
 You can run the experiments by the following command.
 ```
 python main.py --token_level word-level \
-            --model_type lstm \
+            --model_type roberta \
             --model_dir <dir to save model> \
             --task <name of dataset, mixatis or mixsnips> \
             --data_dir <dir of data> \
@@ -44,34 +44,17 @@ python main.py --token_level word-level \
             --num_train_epochs 100 \
             --intent_loss_coef <lambda> \
             --learning_rate 1e-5 \
-            --aux_loss_coef <lambda> \
             --train_batch_size 32 \
-            --char_embed 64 \
-            --char_out 64 \
-            --word_embedding_dim 128 \
-            --encoder_hidden_dim 128 \
-            --attention_hidden_dim 256 \
-            --attention_output_dim 256 \
-            --decoder_hidden_dim 256 \
-            --use_charcnn \
-            --use_charlstm \
             --num_intent_detection \
             --use_crf \
-            --slot_decoder_size 128 \
-            --level_projection_size 32 \
             --pretrained \
             --pretrained_path $PRETRAINED_PATH \
-            --intent_slot_attn_size 128 \
-            --intent_slot_attn_type coattention \
-            --embedding_type soft \
-            --label_embedding_size 128
+            --intent_slot_attn_type coattention
 ```
-It is noted that we train the base model without coattention first and initialize MISCA with this base model. To train the base model, simply remove the last 6 lines in the command above. 
-
-To train the model with PLMs, users must replace the token embeddings with the first subword representation from PLMs.
+It is noted that we train the base model without coattention first and initialize MISCA with this base model. To train the base model, simply remove the last 3 lines in the command above. 
 
 Due to some stochastic factors(e.g., GPU and environment), it maybe need to slightly tune the hyper-parameters using grid search to reproduce the results. The suggested settings are provided in our paper.
 
-If you have any question, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply you soon.
+If you have any questions, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply soon.
 ### Acknowledgement
 Our code is based on the implementation of the JointIDSF paper from https://github.com/VinAIResearch/JointIDSF
