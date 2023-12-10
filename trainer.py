@@ -8,7 +8,7 @@ from early_stopping import EarlyStopping
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import AdamW, get_linear_schedule_with_warmup, AutoTokenizer
 from utils import MODEL_CLASSES, compute_metrics, get_intent_labels, get_slot_labels, get_clean_labels, get_slots_all
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,29 @@ class Trainer(object):
         self.test_dataset = test_dataset
         self.collate_fn = collate
         args.n_chars = len(self.train_dataset.chars)
+        if 'bert' in self.args.model_type:
+            self.tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+            train_dataset.load_bert(self.tokenizer)
+            dev_dataset.load_bert(self.tokenizer)
+            test_dataset.load_bert(self.tokenizer)
 
         self.intent_label_lst = get_intent_labels(args)
         self.slot_label_lst, self.hiers = get_slots_all(args)
 
         self.pad_token_label_id = args.ignore_index
         self.config_class, self.model_class, _ = MODEL_CLASSES[args.model_type]
-            
-        self.model = self.model_class(args, len(self.train_dataset.vocab), self.intent_label_lst, self.slot_label_lst, self.hiers)
+        if 'bert' in self.args.model_type:
+            self.config = self.config_class.from_pretrained(args.model_name_or_path, finetuning_task=args.task)
+            self.model = self.model_class.from_pretrained(
+                args.model_name_or_path,
+                config=self.config,
+                args=args,
+                intent_label_lst=self.intent_label_lst,
+                slot_label_lst=self.slot_label_lst,
+                slot_hier=self.hiers
+            )
+        else:
+            self.model = self.model_class(args, len(self.train_dataset.vocab), self.intent_label_lst, self.slot_label_lst, self.hiers)
         if args.pretrained:
             model_state = self.model.state_dict()
             pretrained_state = torch.load(os.path.join(args.pretrained_path, 'model.bin'))
@@ -101,15 +116,24 @@ class Trainer(object):
             for step, batch in enumerate(epoch_iterator):
                 self.model.train()
                 batch = tuple(t.to(self.device) for t in batch[:-1]) + (batch[-1], ) # GPU or CPU
-
-                inputs = {
+                if 'bert' in self.args.model_type:
+                       inputs = {
                     "input_ids": batch[0],
-                    "char_ids": batch[1],
-                    "intent_label_ids": batch[2],
-                    "slot_labels_ids": batch[3],
-                    "slot_hier": batch[4],
-                    "seq_lens": batch[5],
-                }
+                    "attention_mask": batch[3],
+                    "intent_label_ids": batch[5],
+                    "slot_labels_ids": batch[6],
+                    "token_type_ids": batch[4],
+                    "heads": batch[2],
+                    "seq_lens": batch[-1].cpu()
+                    }
+                else:
+                    inputs = {
+                        "input_ids": batch[0],
+                        "char_ids": batch[1],
+                        "intent_label_ids": batch[2],
+                        "slot_labels_ids": batch[3],
+                        "seq_lens": batch[4],
+                    }
                 outputs = self.model(**inputs)
                 total_loss, intent_loss, slot_loss, count_loss = outputs[0]
 
@@ -204,14 +228,24 @@ class Trainer(object):
             batch = tuple(t.to(self.device) for t in batch[:-1]) + (batch[-1], )
             # print(batch)
             with torch.no_grad():
-                inputs = {
+                if 'bert' in self.args.model_type:
+                       inputs = {
                     "input_ids": batch[0],
-                    "char_ids": batch[1],
-                    "intent_label_ids": batch[2],
-                    "slot_labels_ids": batch[3],
-                    "slot_hier": batch[4],
-                    "seq_lens": batch[5],
-                }
+                    "attention_mask": batch[3],
+                    "intent_label_ids": batch[5],
+                    "slot_labels_ids": batch[6],
+                    "token_type_ids": batch[4],
+                    "heads": batch[2],
+                    "seq_lens": batch[-1].cpu()
+                    }
+                else:
+                    inputs = {
+                        "input_ids": batch[0],
+                        "char_ids": batch[1],
+                        "intent_label_ids": batch[2],
+                        "slot_labels_ids": batch[3],
+                        "seq_lens": batch[4],
+                    }
                 outputs = self.model(**inputs)
                 
                 if self.args.num_intent_detection:

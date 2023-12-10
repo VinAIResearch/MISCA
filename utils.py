@@ -7,16 +7,17 @@ import numpy as np
 from seqeval.metrics import precision_score, recall_score, f1_score
 from sklearn.metrics import average_precision_score, precision_recall_curve
 
-from transformers import BertConfig, DistilBertConfig, AlbertConfig, XLMRobertaConfig, DebertaV2Config
-from transformers import BertTokenizer, DistilBertTokenizer, AlbertTokenizer, XLMRobertaTokenizer, DebertaV2Tokenizer
-from model import JointLSTM 
+from transformers import RobertaConfig, RobertaTokenizer
+from model import JointLSTM, JointRoberta
 
 MODEL_CLASSES = {
-    "lstm": (None, JointLSTM, None)
+    "lstm": (None, JointLSTM, None),
+    "roberta": (RobertaConfig, JointRoberta, RobertaTokenizer)
 }
 
 MODEL_PATH_MAP = {
     "lstm": "",
+    "roberta": "roberta-base"
 }
 
 
@@ -103,10 +104,7 @@ def get_intent_acc(preds, labels):
     f1 = 0.0 if p + r == 0.0 else 2 * p * r / (p + r)
 
     return {
-        # "intent_average_precision": average_precision,
         "intent_acc": acc,
-        # "intent_p": p,
-        # "intent_r": r,
         "intent_f1": f1,
     }
 

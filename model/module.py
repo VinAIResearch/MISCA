@@ -243,7 +243,7 @@ class LSTMEncoder(nn.Module):
         dropout_text = self.__dropout_layer(embedded_text)
 
         # Pack and Pad process for input of variable length.
-        packed_text = pack_padded_sequence(dropout_text, seq_lens, batch_first=True)
+        packed_text = pack_padded_sequence(dropout_text, seq_lens, batch_first=True, enforce_sorted=False)
         lstm_hiddens, (h_last, c_last) = self.__lstm_layer(packed_text)
         padded_hiddens, _ = pad_packed_sequence(lstm_hiddens, batch_first=True)
 

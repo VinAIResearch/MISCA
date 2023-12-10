@@ -3,12 +3,95 @@ import numpy as np
 import torch
 import logging
 import copy
+import json
 
-from torch.utils.data import Dataset
+from transformers import AutoTokenizer
+from torch.utils.data import Dataset, TensorDataset
 from torch.utils.data import DataLoader
+from utils import get_intent_labels, get_slot_labels
 from utils import get_intent_labels, get_slot_labels, get_clean_labels, get_slots_all
 
+#test
 logger = logging.getLogger(__name__)
+
+def convert_examples_to_features(examples, max_seq_len, tokenizer,
+                                 pad_token_label_id=-100,
+                                 cls_token_segment_id=0,
+                                 pad_token_segment_id=0,
+                                 sequence_a_segment_id=0,
+                                 mask_padding_with_zero=True):
+    # Setting based on the current model type
+    cls_token = tokenizer.cls_token
+    sep_token = tokenizer.sep_token
+    unk_token = tokenizer.unk_token
+    pad_token_id = tokenizer.pad_token_id
+
+    features = []
+    for (ex_index, example) in enumerate(examples):
+        # Tokenize word by word (for NER)
+        tokens = []
+        heads = []
+        # slot_labels_ids = []
+        for word, slot_label in zip(example.text, example.slot_labels[1:-1]):
+            word_tokens = tokenizer.tokenize(word)
+            if not word_tokens:
+                word_tokens = [unk_token]  # For handling the bad-encoded word
+            heads.append(len(tokens) + 1) # +1 for the cls token
+            tokens.extend(word_tokens)
+        # Account for [CLS] and [SEP]
+        special_tokens_count = 2
+        if len(tokens) > max_seq_len - special_tokens_count:
+            tokens = tokens[:(max_seq_len - special_tokens_count)]
+
+        # Add [SEP] token
+        heads += [len(tokens) + 1]
+        tokens += [sep_token]
+        token_type_ids = [sequence_a_segment_id] * len(tokens)
+
+        # Add [CLS] token
+        tokens = [cls_token] + tokens
+        heads = [0] + heads
+        token_type_ids = [cls_token_segment_id] + token_type_ids
+
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+
+        # Zero-pad up to the sequence length.
+        padding_length = max_seq_len - len(input_ids)
+        input_ids = input_ids + ([pad_token_id] * padding_length)
+        attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
+        token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
+
+        assert len(input_ids) == max_seq_len, "Error with input length {} vs {}".format(len(input_ids), max_seq_len)
+        assert len(attention_mask) == max_seq_len, "Error with attention mask length {} vs {}".format(len(attention_mask), max_seq_len)
+        assert len(token_type_ids) == max_seq_len, "Error with token type length {} vs {}".format(len(token_type_ids), max_seq_len)
+        assert len(heads) == len(example.slot_labels)
+
+        if ex_index < 5:
+            logger.info("*** Example ***")
+            logger.info("guid: %s" % example.guid)
+            logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
+            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
+            logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+            logger.info("heads: %s" % " ".join([str(x) for x in heads]))
+        
+        features.append(
+            InputExample(guid=example.guid,
+                         words=input_ids,
+                         chars=example.chars,
+                         heads=heads,
+                         attention_mask=attention_mask,
+                         token_type_ids=token_type_ids,
+                         intent_label=example.intent_label,
+                         slot_labels=example.slot_labels,
+                         text=example.text))
+
+    return features
+
 
 class Vocab(object):
 
@@ -87,6 +170,7 @@ class Vocab(object):
     def __str__(self):
         return f'Vocab object with {len(self.index2word)} instances'
 
+
 class InputExample(object):
     """
     A single training/test example for simple sequence classification.
@@ -98,13 +182,16 @@ class InputExample(object):
         slot_labels: (Optional) list. The slot labels of the example.
     """
 
-    def __init__(self, guid, words, chars, intent_label=None, slot_labels=None, slot_hiers=None):
+    def __init__(self, guid, words, chars=None, heads=None, attention_mask=None, token_type_ids=None, intent_label=None, slot_labels=None, text=None):
         self.guid = guid
         self.words = words
         self.chars = chars
+        self.heads = heads
+        self.attention_mask = attention_mask
+        self.token_type_ids = token_type_ids
         self.intent_label = intent_label
         self.slot_labels = slot_labels
-        self.slot_hiers = slot_hiers
+        self.text = text
 
     def __repr__(self):
         return str(self.to_json_string())
@@ -118,6 +205,8 @@ class InputExample(object):
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
+
+    
 class TextLoader(Dataset):
 
     def __init__(self, args, mode):
@@ -125,10 +214,13 @@ class TextLoader(Dataset):
         self.intent_labels = get_intent_labels(args)
         self.slot_labels, self.hiers = get_slots_all(args)
 
-        self.vocab = Vocab(min_freq=args.min_freq)
+        self.vocab = Vocab(min_freq=self.args.min_freq)
         self.chars = Vocab()
         self.examples = self.build(mode)
-
+    def load_bert(self, tokenizer):
+        pad_token_label_id = self.args.ignore_index
+        self.examples = convert_examples_to_features(self.examples, self.args.max_seq_len, tokenizer,
+                                                     pad_token_label_id=pad_token_label_id)
     @classmethod
     def read_file(cls, input_file, quotechar=None):
         """ Read data file of given path.
@@ -175,7 +267,6 @@ class TextLoader(Dataset):
             for j in range(len(char)):
                 char[j] = char[j] + [0] * (max_char - len(char[j]))
             char = [[0] * max_char] + char + [[0] * max_char]
-            # print(char)
             # 2. intent
             _intent = intent[0].split('#')
             intent_label = [0 for _ in self.intent_labels]
@@ -184,21 +275,11 @@ class TextLoader(Dataset):
                 intent_label[idx] = 1
             # 3. slot
             slot_labels = []
-            layers = [[0 for _ in x] for x in self.hiers]
             for s in slot:
                 slot_labels.append(self.slot_labels.index(s) if s in self.slot_labels else self.slot_labels.index("UNK"))
-                if s[:2] == 'B-':
-                    name = s[2:]
-                    lays = name.split('.')
-                    for l in range(len(lays)):
-                        pref = '.'.join(lays[:l + 1])
-                        if pref in self.hiers[l]:
-                            idx = self.hiers[l].index(pref)
-                            layers[l][idx] = 1
             slot_labels = [self.slot_labels.index('PAD')] + slot_labels + [self.slot_labels.index('PAD')]
-            
             assert len(words) == len(slot_labels)
-            examples.append(InputExample(guid=guid, words=words, chars=char, intent_label=intent_label, slot_labels=slot_labels, slot_hiers=layers))
+            examples.append(InputExample(guid=guid, words=words, chars=char, intent_label=intent_label, slot_labels=slot_labels, text=text))
         return examples
 
     def build(self, mode):
@@ -213,18 +294,16 @@ class TextLoader(Dataset):
             for word in text:
                 chars[-1].append(list(word))
 
-        cache = os.path.join(self.args.data_dir, f'vocab_{self.args.task}_{self.args.min_freq}')
+        cache = os.path.join(self.args.data_dir, f'vocab_{self.args.task}')
         if os.path.exists(cache):
             self.vocab.load(cache)
         elif mode == 'train':
-            # print(texts)
             self.vocab.add(texts)
             self.vocab.save(cache)
         cache_chars = os.path.join(self.args.data_dir, f'chars_{self.args.task}')
         if os.path.exists(cache_chars):
             self.chars.load(cache_chars)
         elif mode == 'train':
-            # print(texts)
             self.chars.add(chars)
             self.chars.save(cache_chars)
         
@@ -237,55 +316,85 @@ class TextLoader(Dataset):
     def __getitem__(self, index):
         example = self.examples[index]
         words = torch.tensor(example.words, dtype=torch.long)
-        chars = torch.tensor(example.chars, dtype=torch.long)
+        
         intent = torch.tensor(example.intent_label, dtype=torch.float)
         slot = torch.tensor(example.slot_labels, dtype=torch.long)
-        hiers = torch.tensor([it for lst in example.slot_hiers for it in lst], dtype=torch.float)
-        return (words, chars, intent, slot, hiers)
+        chars = torch.tensor(example.chars, dtype=torch.long)
+
+        if 'bert' in self.args.model_type:
+            attention_mask = torch.tensor(example.attention_mask, dtype=torch.long)
+            token_type_ids = torch.tensor(example.token_type_ids, dtype=torch.long)
+            heads = torch.tensor(example.heads, dtype=torch.long)
+            return (words, chars, heads, attention_mask, token_type_ids, intent, slot)
+        else:
+            return (words, chars, intent, slot)
 
     def __len__(self):
         return len(self.examples)
 
 class TextCollate():
-    def __init__(self, pad_index, num_intents, hiers):
+    def __init__(self, pad_index, num_intents, max_seq_len):
         self.pad_index = pad_index
         self.num_intents = num_intents
-        self.sum_hiers = sum([len(x) for x in hiers])
+        self.max_seq_len = max_seq_len
 
     def __call__(self, batch):
         
-        len_list = [len(x[0]) for x in batch]
+        len_list = [len(x[-1]) for x in batch]
         len_char = [x[1].size(1) for x in batch]
         max_len = max(len_list)
         max_char = max(len_char)
 
         seq_lens = []
 
-        text_padded = torch.LongTensor(len(batch), max_len)
+        bert = len(batch[0]) > 4
+        
         char_padded = torch.LongTensor(len(batch), max_len, max_char)
         slot_padded = torch.LongTensor(len(batch), max_len)
         intent = torch.FloatTensor(len(batch), self.num_intents)
-        slot_hier = torch.FloatTensor(len(batch), self.sum_hiers)
-        text_padded.zero_()
         char_padded.zero_()
-        slot_padded.zero_()
         intent.zero_()
-        slot_hier.zero_()
-
+        slot_padded.zero_()
+        
+        if not bert:
+            text_padded = torch.LongTensor(len(batch), max_len)
+            text_padded.zero_()
+            
+        else:
+            input_ids = torch.LongTensor(len(batch), self.max_seq_len)
+            attention_mask = torch.LongTensor(len(batch), self.max_seq_len)
+            token_type_ids = torch.LongTensor(len(batch), self.max_seq_len)
+            heads = torch.LongTensor(len(batch), max_len)
+            input_ids.zero_()
+            attention_mask.zero_()
+            token_type_ids.zero_()
+            heads.zero_()
         # Get sorted index of len_list.
         sorted_index = np.argsort(len_list)[::-1]
 
         for i, index in enumerate(sorted_index):
             seq_lens.append(len_list[index])
-            text = batch[index][0]
-            text_padded[i, :text.size(0)] = text
+            intent[i] = batch[index][-2]
+            slot = batch[index][-1]
+            slot_padded[i, :slot.size(0)] = slot
             char = batch[index][1]
             char_padded[i, :char.size(0), :char.size(1)] = char
 
-            slot = batch[index][3]
-            slot_padded[i, :slot.size(0)] = slot
-
-            intent[i] = batch[index][2]
-            slot_hier[i] = batch[index][4]
-        return text_padded, char_padded, intent, slot_padded, slot_hier, torch.tensor(seq_lens, dtype=torch.long)
+            if not bert:
+                text = batch[index][0]
+                text_padded[i, :text.size(0)] = text
+            else:
+                input_ids[i] = batch[index][0]
+                attention_mask[i] = batch[index][3]
+                token_type_ids[i] = batch[index][4]
+                head = batch[index][2]
+                heads[i, :head.size(0)] = head
+        if not bert:
+            return text_padded, char_padded, intent, slot_padded, torch.tensor(seq_lens, dtype=torch.long)
+        else:
+            return input_ids, char_padded, heads, attention_mask, token_type_ids, intent, slot_padded, torch.tensor(seq_lens, dtype=torch.long)
     
+if __name__ == '__main__':
+    train_dataset = TextLoader(args, 'train')
+    print([x.shape for x in train_dataset[0]])
+    print([x.shape for x in train_dataset.load_bert()[0]])

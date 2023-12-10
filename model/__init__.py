@@ -1,1 +1,2 @@
 from .modeling_jointlstm import JointLSTM
+from .modeling_jointroberta import JointRoberta
