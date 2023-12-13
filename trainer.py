@@ -45,9 +45,9 @@ class Trainer(object):
             )
         else:
             self.model = self.model_class(args, len(self.train_dataset.vocab), self.intent_label_lst, self.slot_label_lst, self.hiers)
-        if args.pretrained:
+        if args.base_model:
             model_state = self.model.state_dict()
-            pretrained_state = torch.load(os.path.join(args.pretrained_path, 'model.bin'))
+            pretrained_state = torch.load(os.path.join(args.base_model, 'model.bin'))
             pretrained_state = { k:v for k,v in pretrained_state.items() if k in model_state and v.size() == model_state[k].size() }
             model_state.update(pretrained_state)
             self.model.load_state_dict(model_state)

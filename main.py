@@ -93,8 +93,7 @@ if __name__ == '__main__':
     parser.add_argument('--aux_loss_coef', type=float, default=0.5, help='Coefficient for the aux task.')
     parser.add_argument('--early_stopping', type=float, default=-1, help='Early stopping strategy')
 
-    parser.add_argument("--pretrained", action="store_true", help="Whether to init model from pretrained base model")
-    parser.add_argument("--pretrained_path", default="./viatis_xlmr_crf", type=str, help="The pretrained model path")
+    parser.add_argument("--base_model", default=None, type=str, help="The pretrained model path")
 
     parser.add_argument(
         "--num_intent_detection",

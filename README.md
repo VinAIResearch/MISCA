@@ -30,30 +30,43 @@ We propose a joint model named MISCA for multi-intent detection and slot filling
 ```
 
 ### Training and evaluation
-You can run the experiments by the following command.
+In our experiments, we train the base model without coattention first and initialize MISCA with this base model. To train the base model, you can run the experiments by the following command.
 ```
 python main.py --token_level word-level \
             --model_type roberta \
-            --model_dir <dir to save model> \
-            --task <name of dataset, mixatis or mixsnips> \
-            --data_dir <dir of data> \
-            --seed 1 \
+            --model_dir dir_base \
+            --task <mixatis or mixsnips> \
+            --data_dir data \
+            --attention_mode label \
+            --do_train \
+            --do_eval \
+            --num_train_epochs 100 \
+            --intent_loss_coef <lambda> \
+            --learning_rate 1e-3 \
+            --train_batch_size 32 \
+            --num_intent_detection \
+            --use_crf
+```
+Then, once we have pre-trained base model, we can train MISCA by the following command:
+
+```
+python main.py --token_level word-level \
+            --model_type roberta \
+            --model_dir misca \
+            --task <mixatis or mixsnips> \
+            --data_dir data \
             --attention_mode label \
             --do_train \
             --do_eval \
             --num_train_epochs 100 \
             --intent_loss_coef <lambda> \
             --learning_rate 1e-5 \
-            --train_batch_size 32 \
             --num_intent_detection \
-            --use_crf \
-            --pretrained \
-            --pretrained_path $PRETRAINED_PATH \
+            --use_crf \ 
+            --base_model dir_base \
             --intent_slot_attn_type coattention
 ```
-
-It is noted that we train the base model without coattention first and initialize MISCA with this base model. To train the base model, simply remove the last 3 lines in the command above. 
-
+We also provide model checkpoints of MISCA for MixATIS and MixSNIPS. Please [download](https://drive.google.com/drive/folders/1BdiXsokWZ8OzhvRf3mbJRGRPNNBjK4Rj) the checkpoint if you want to make inference without training from scratch. 
 If you have any questions, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply soon.
 
 ### Acknowledgement
