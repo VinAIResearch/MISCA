@@ -42,7 +42,7 @@ python main.py --token_level word-level \
             --do_eval \
             --num_train_epochs 100 \
             --intent_loss_coef <lambda> \
-            --learning_rate 1e-3 \
+            --learning_rate 1e-5 \
             --train_batch_size 32 \
             --num_intent_detection \
             --use_crf
