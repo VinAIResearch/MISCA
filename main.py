@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
     parser.add_argument("--tuning_metric", default="mean_intent_slot", type=str, help="Metric to save checkpoint")
 
-    parser.add_argument("--only_intent", default=0.1, type=float, help="The first epochs to optimize intent")
+    parser.add_argument("--only_intent", default=0, type=float, help="The first epochs to optimize intent")
 
     parser.add_argument("--ignore_index", default=0, type=int,
                         help='Specifies a target value that is ignored and does not contribute to the input gradient')
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     )
     
     parser.add_argument(
-        "--slot_decoder_size", type=int, default=128, help="hidden size of attention output vector"
+        "--slot_decoder_size", type=int, default=512, help="hidden size of attention output vector"
     )
 
     parser.add_argument(
