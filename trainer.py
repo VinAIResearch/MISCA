@@ -336,7 +336,7 @@ class Trainer(object):
         if not os.path.exists(self.args.model_dir):
             os.makedirs(self.args.model_dir)
         model_to_save = self.model.module if hasattr(self.model, "module") else self.model
-        torch.save(model_to_save, os.path.join(self.args.model_dir, 'model.bin'))
+        torch.save(model_to_save.state_dict(), os.path.join(self.args.model_dir, 'model.bin'))
 
         # Save training arguments together with the trained model
         torch.save(self.args, os.path.join(self.args.model_dir, "training_args.bin"))
