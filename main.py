@@ -112,7 +112,7 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        "--intent_slot_attn_size", type=int, default=128, help="hidden size of attention output vector"
+        "--intent_slot_attn_size", type=int, default=256, help="hidden size of attention output vector"
     )
 
     parser.add_argument(
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        "--label_embedding_size", type=int, default=128, help="hidden size of label embedding vector"
+        "--label_embedding_size", type=int, default=256, help="hidden size of label embedding vector"
     )
 
     # CRF option
