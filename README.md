@@ -47,7 +47,7 @@ python main.py --token_level word-level \
             --num_intent_detection \
             --use_crf
 ```
-Then, once we have pre-trained base model, we can train MISCA by the following command (for example for PLMs):
+Then, once we have pre-trained base model, we can train MISCA by the following command:
 
 ```
 python main.py --token_level word-level \
