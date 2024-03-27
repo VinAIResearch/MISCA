@@ -121,6 +121,9 @@ class JointRoberta(RobertaPreTrainedModel):
         attention_mask = self.sequence_mask(seq_lens, max_length=max_len)
         total_loss = 0
         aux_loss = 0
+        intent_loss = 0
+        slot_loss = 0
+        count_loss = 0
         # 1. Intent Softmax
         if intent_label_ids is not None:
             if self.num_intent_labels == 1:
