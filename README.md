@@ -47,7 +47,7 @@ python main.py --token_level word-level \
             --num_intent_detection \
             --use_crf
 ```
-Then, once we have pre-trained base model, we can train MISCA by the following command:
+Then, once we have pre-trained base model, we can train MISCA by the following command (for example for PLMs):
 
 ```
 python main.py --token_level word-level \
@@ -67,6 +67,23 @@ python main.py --token_level word-level \
             --intent_slot_attn_type coattention
 ```
 We also provide model checkpoints of MISCA for MixATIS and MixSNIPS. Please [download](https://drive.google.com/drive/folders/1BdiXsokWZ8OzhvRf3mbJRGRPNNBjK4Rj) the checkpoint if you want to make inference without training from scratch. 
+
+### Prediction
+We provide a script to predict intents and slots from utterances. To run it, please prepare a raw text file with one utterance per line, and run the following command:
+```
+python predict.py --token_level word-level \
+            --model_type roberta \
+            --model_dir misca \
+            --task <mixatis or mixsnips> \
+            --data_dir data \
+            --attention_mode label \
+            --num_intent_detection \
+            --use_crf \
+            --intent_slot_attn_type coattention \
+            --input_file input_file.txt \
+            --output_file output_file.txt
+```
+
 If you have any questions, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply soon.
 
 ### Acknowledgement
