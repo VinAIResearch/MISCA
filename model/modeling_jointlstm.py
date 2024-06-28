@@ -133,7 +133,8 @@ class JointLSTM(nn.Module):
                 intent_count = torch.sum(intent_label_ids, dim=-1).long()
                 intent_loss = intent_loss_fct(intent_logits.view(-1, self.num_intent_labels), intent_label_ids) 
                 count_loss = intent_loss_cnt(intent_dec.view(-1, self.num_intent_labels), intent_count)
-            total_loss += (intent_loss + count_loss) * self.args.intent_loss_coef
+            total_loss += intent_loss * self.args.intent_loss_coef
+            aux_loss += count_loss
 
         # 2. Slot Softmax
         if slot_labels_ids is not None:
@@ -151,7 +152,7 @@ class JointLSTM(nn.Module):
                 else:
                     slot_loss = slot_loss_fct(slot_logits.view(-1, self.num_slot_labels), slot_labels_ids.view(-1))
             total_loss += slot_loss * (1 - self.args.intent_loss_coef)
-        
+        total_loss += aux_loss * self.args.aux_loss_coef
         outputs = ((intent_logits, slot_logits, intent_dec),)  # add hidden states and attention if they are here
 
         outputs = ((total_loss, intent_loss, slot_loss, count_loss),) + outputs

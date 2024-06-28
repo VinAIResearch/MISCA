@@ -30,7 +30,8 @@ We propose a joint model named MISCA for multi-intent detection and slot filling
 ```
 
 ### Training and evaluation
-In our experiments, we train the base model without coattention first and initialize MISCA with this base model. To train the base model, you can run the experiments by the following command.
+In our experiments, we train the base model without coattention first and initialize MISCA with this base model. 
+To train the base model (with PLMs), you can run the experiments by the following command.
 ```
 python main.py --token_level word-level \
             --model_type roberta \
@@ -40,7 +41,7 @@ python main.py --token_level word-level \
             --attention_mode label \
             --do_train \
             --do_eval \
-            --num_train_epochs 100 \
+            --num_train_epochs 40 \
             --intent_loss_coef <lambda> \
             --learning_rate 1e-5 \
             --train_batch_size 32 \
@@ -58,7 +59,7 @@ python main.py --token_level word-level \
             --attention_mode label \
             --do_train \
             --do_eval \
-            --num_train_epochs 100 \
+            --num_train_epochs 40 \
             --intent_loss_coef <lambda> \
             --learning_rate 1e-5 \
             --num_intent_detection \
@@ -66,8 +67,10 @@ python main.py --token_level word-level \
             --base_model dir_base \
             --intent_slot_attn_type coattention
 ```
-We also provide model checkpoints of MISCA for MixATIS and MixSNIPS. Please [download](https://drive.google.com/drive/folders/1BdiXsokWZ8OzhvRf3mbJRGRPNNBjK4Rj) the checkpoint if you want to make inference without training from scratch. 
+In our experiments, MISCA was trained via 2 steps: freezing the PLM encoder, then fine-tuning the full model. To freeze the model, simply `detach()` the output of PLM.
+We also provide model checkpoints of MISCA for MixATIS and MixSNIPS. Please [download](https://drive.google.com/drive/folders/1BdiXsokWZ8OzhvRf3mbJRGRPNNBjK4Rj) the checkpoint if you want to make inference without training from scratch. You can also use the base model provided here to train MISCA.
 
+In terms of LSTM, you should set the argument `only_intent` to 0.1 to only optimize intent detection in the first 10% epochs. For MixATIS, you can also set `max_freq` to 10 to filter rare tokens.
 ### Prediction
 We provide a script to predict intents and slots from utterances. To run it, please prepare a raw text file with one utterance per line, and run the following command:
 ```
@@ -84,8 +87,9 @@ python predict.py --token_level word-level \
             --output_file output_file.txt
 ```
 
-If you have any questions, please issue the project or email me (v.thinhphp1@vinai.io or thinhphp.nlp@gmail.com) and we will reply soon.
-
 ### Acknowledgement
 
 Our code is based on the implementation of the JointIDSF paper from https://github.com/VinAIResearch/JointIDSF
+
+### Contact
+If you have any questions, feel free to contact me (thinhphp.nlp@gmail.com).
