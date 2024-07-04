@@ -268,8 +268,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--char_embed", default=64, type=int)
     parser.add_argument("--char_out", default=64, type=int)
-    parser.add_argument("--use_charcnn", action="store_false", help="Whether to use CharCNN")
-    parser.add_argument("--use_charlstm", action="store_false", help="Whether to use CharLSTM")
+    parser.add_argument("--no_charcnn", action="store_true", help="Whether to use CharCNN")
+    parser.add_argument("--no_charlstm", action="store_true", help="Whether to use CharLSTM")
     parser.add_argument("--word_embedding_dim", default=128, type=int)
     parser.add_argument("--encoder_hidden_dim", default=128, type=int)
     parser.add_argument("--decoder_hidden_dim", default=256, type=int)

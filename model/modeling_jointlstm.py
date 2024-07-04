@@ -19,9 +19,9 @@ class JointLSTM(nn.Module):
         self.encoder = Encoder(args)  
         nn.init.normal_(self.embedding.weight)
         out_dim = args.encoder_hidden_dim + args.attention_output_dim
-        if args.use_charcnn:
+        if not args.no_charcnn:
             out_dim += args.char_out
-        if args.use_charlstm:
+        if not args.no_charlstm:
             out_dim += args.char_out
         self.lstm_intent = LSTMEncoder(
             out_dim,

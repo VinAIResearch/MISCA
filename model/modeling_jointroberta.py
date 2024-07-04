@@ -69,6 +69,8 @@ class JointRoberta(RobertaPreTrainedModel):
     def forward(self, input_ids, attention_mask, token_type_ids, heads, intent_label_ids, slot_labels_ids, seq_lens):
         lens = torch.sum(attention_mask, dim=-1).cpu()
         encoded = self.roberta(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)[0]
+        if self.args.freeze:
+            encoded = encoded.detach()
         intent_output = self.lstm_intent(encoded, lens)
         slot_output = self.lstm_slot(encoded, lens)
 

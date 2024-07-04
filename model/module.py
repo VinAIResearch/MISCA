@@ -262,14 +262,14 @@ class Encoder(nn.Module):
             self.__args.dropout_rate
         )
 
-        if args.use_charlstm:
+        if not args.no_charlstm:
             self.charlstm = CharLSTM(
                 self.__args.n_chars,
                 self.__args.char_embed,
                 self.__args.char_out
             )
 
-        if args.use_charcnn:
+        if not args.no_charcnn:
             device = 'cpu' if args.no_cuda else 'cuda'
             self.charcnn = CharCNN(
                 input_length=15, 
@@ -290,10 +290,10 @@ class Encoder(nn.Module):
         lstm_hiddens = self.__encoder(word_tensor, seq_lens)
         attention_hiddens = self.__attention(word_tensor, seq_lens)
         hiddens = torch.cat([attention_hiddens, lstm_hiddens], dim=2)
-        if self.__args.use_charlstm:
+        if not self.__args.no_charlstm:
             char_lstm = self.charlstm(char_tensor)
             hiddens = torch.cat([hiddens, char_lstm], dim=2)
-        if self.__args.use_charcnn:
+        if not self.__args.no_charcnn:
             char_cnn = self.charcnn(char_tensor)
             hiddens = torch.cat([hiddens, char_cnn], dim=2)
         return hiddens
